@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Handwriting to G-Code Converter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .logo-space {
+            width: 150px;
+            height: 150px;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-space img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 300;
+            margin-bottom: 10px;
+            color: #222;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            color: #666;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            font-size: 1.4em;
+            font-weight: 400;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            padding: 60px 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: border-color 0.3s ease;
+            cursor: pointer;
+            background: #fafafa;
+        }
+
+        .upload-area:hover {
+            border-color: #999;
+        }
+
+        .upload-area.dragover {
+            border-color: #666;
+            background: #f5f5f5;
+        }
+
+        .upload-icon {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .upload-area h3 {
+            font-size: 1.2em;
+            font-weight: 400;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .upload-area p {
+            color: #666;
+            font-size: 0.95em;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-preview {
+            max-width: 200px;
+            max-height: 200px;
+            border-radius: 4px;
+            margin: 20px auto;
+            display: block;
+        }
+
+        .status-hidden {
+            display: none;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .process-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            width: 100%;
+            font-family: inherit;
+        }
+
+        .process-btn:hover {
+            background: #555;
+        }
+
+        .process-btn:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        .status-section {
+            background: #f0f8f0;
+            border: 1px solid #d4edda;
+            border-radius: 4px;
+            padding: 20px;
+            margin-top: 30px;
+            color: #155724;
+        }
+
+        .status-section h3 {
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .status-section code {
+            background: #e2e3e5;
+            padding: 8px 12px;
+            border-radius: 3px;
+            display: block;
+            margin: 10px 0;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px 15px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .upload-area {
+                padding: 40px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo-space">
+                <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="Logo">
+            </div>
+            <h1>Handwrite your Homework using AI</h1>
+            <p>Transform handwritten text into 3D printer instructions</p>
+        </div>
+
+        <div class="section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <span style="font-size: 0.9em; color: #666;">1. Upload</span>
+                <span style="font-size: 0.9em; color: #666;">2. Prompt</span>
+                <span style="font-size: 0.9em; color: #666;">3. Process</span>
+            </div>
+            <h2>Upload Handwriting Sample</h2>
+            <p style="font-size: 0.9em; color: #666; margin-bottom: 15px;">
+                Download & Print BLANK Template and fill out as seen in example: 
+                <a href="https://drive.google.com/file/d/1Z49uim1UsAvh-lJy1cg4OCk6BTwzcc__/view?usp=sharing" target="_blank" style="color: #333; text-decoration: underline;">EXAMPLE Template</a> | 
+                <a href="https://drive.google.com/file/d/1g6RNmlf9VlGwppaO85kG53jnD62AmPkb/view?usp=sharing" target="_blank" style="color: #333; text-decoration: underline;">BLANK Template</a>
+            </p>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <h3>Drop your handwriting image here (.png or .jpg)</h3>
+                <p>or click to select file</p>
+                <input type="file" id="fileInput" class="file-input" accept="image/*">
+            </div>
+            <div id="filePreview" class="status-hidden">
+                <img id="previewImage" class="file-preview" alt="Preview">
+                <p id="fileName" style="text-align: center; color: #666; margin-top: 10px;"></p>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>Enter Your Prompt</h2>
+            <div class="form-group">
+                <label for="userPrompt">What would you like to generate? (Google Gemini Powered API)</label>
+                <textarea id="userPrompt" placeholder="Enter your prompt here..."></textarea>
+            </div>
+            <div class="form-group">
+                <label for="additionalNotes">Additional Instructions (Optional)</label>
+                <input type="text" id="additionalNotes" placeholder="Additional notes or requirements">
+            </div>
+        </div>
+
+        <button class="process-btn" id="processBtn" onclick="processFiles()">
+            Save Files for Processing
+        </button>
+
+        <div id="statusSection" class="status-section status-hidden">
+            <h3>✅ Files Ready for Processing</h3>
+            <p>Your files have been prepared. Run the Python script to complete the process:</p>
+            <code>python process.py</code>
+        </div>
+    </div>
+
+    <script>
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const filePreview = document.getElementById('filePreview');
+        const previewImage = document.getElementById('previewImage');
+        const fileName = document.getElementById('fileName');
+        const processBtn = document.getElementById('processBtn');
+        const statusSection = document.getElementById('statusSection');
+
+        let uploadedFile = null;
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please upload an image file.');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB.');
+                return;
+            }
+
+            uploadedFile = file;
+            
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImage.src = e.target.result;
+                fileName.textContent = file.name;
+                filePreview.classList.remove('status-hidden');
+            };
+            reader.readAsDataURL(file);
+
+            // Update upload area
+            uploadArea.innerHTML = `
+                <div class="upload-icon">✅</div>
+                <h3>File uploaded successfully</h3>
+                <p>${file.name}</p>
+            `;
+        }
+
+        function processFiles() {
+    const prompt = document.getElementById('userPrompt').value.trim();
+    if (!uploadedFile) {
+        alert('Please upload a handwriting sample first.');
+        return;
+    }
+    if (!prompt) {
+        alert('Please enter a prompt.');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', uploadedFile);
+    formData.append('prompt', prompt);
+
+    fetch('/process', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => {
+        if (!res.ok) {
+            return res.text().then(text => {
+                throw new Error(`Server Error: ${text}`);
+            });
+        }
+        // Redirect user to download the file
+        window.location.href = '/output/final_output.gcode';
+    })
+    .catch(err => {
+        alert(`Request failed: ${err.message}`);
+    });
+}
+
+
+    </script>
+</body>
+</html>
